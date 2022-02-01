@@ -1,24 +1,165 @@
-import logo from './logo.svg';
-import './App.css';
+import { useEffect, useState } from "react";
+import InputGroup from "./components/InputGroup";
+import UserContainer from "./components/UserContainer";
+import Axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { UserContext } from "./contexts/UserContext";
 
 function App() {
+  const [users, setUsers] = useState([]);
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    username: "",
+    date_of_birth: "",
+  });
+  useEffect(() => {
+    Axios({
+      method: "GET",
+      url: "https://fathomless-bastion-81493.herokuapp.com/api/users",
+    })
+      .then((res) => {
+        setUsers(res.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  }, []);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prevValue) => {
+      if (name === "first_name") {
+        return {
+          first_name: value,
+          last_name: prevValue.last_name,
+          username: prevValue.username,
+          date_of_birth: prevValue.date_of_birth,
+        };
+      } else if (name === "last_name") {
+        return {
+          first_name: prevValue.first_name,
+          last_name: value,
+          username: prevValue.username,
+          date_of_birth: prevValue.date_of_birth,
+        };
+      } else if (name === "username") {
+        return {
+          first_name: prevValue.first_name,
+          last_name: prevValue.last_name,
+          username: value,
+          date_of_birth: prevValue.date_of_birth,
+        };
+      } else if (name === "date_of_birth") {
+        return {
+          first_name: prevValue.first_name,
+          last_name: prevValue.last_name,
+          username: prevValue.username,
+          date_of_birth: value,
+        };
+      }
+    });
+  };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    Axios({
+      method: "POST",
+      data: formData,
+      url: "https://fathomless-bastion-81493.herokuapp.com/api/user",
+    })
+      .then((res) => {
+        if (res.data.message === "Username is already taken") {
+          toast.error("Username is already taken!");
+        } else {
+          toast.success("Successfully added a new user!");
+          Axios({
+            method: "GET",
+            url: "https://fathomless-bastion-81493.herokuapp.com/api/users",
+          })
+            .then((res) => {
+              setUsers(res.data);
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+        }
+      })
+      .catch((err) => {
+        toast.error("An error has occurred");
+        console.log(err);
+      });
+  };
+  function order(a, b) {
+    return a < b ? 1 : a > b ? 0 : -1;
+  }
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+    <UserContext.Provider value={{ users, setUsers }}>
+      <div className="wrapper flex flex-col h-screen justify-center items-center">
+        <ToastContainer />
+        <form
+          onSubmit={(e) => {
+            handleSubmit(e);
+          }}
+          method="POST"
+          action="/api/user"
+          className="form basis-2/5 w-full h-full grid grid-cols-3 grid-rows-2 gap-6"
         >
-          Learn React
-        </a>
-      </header>
-    </div>
+          <InputGroup
+            change={(e) => {
+              handleChange(e);
+            }}
+            label="First Name"
+            name="first_name"
+            value={formData.first_name}
+          />
+          <InputGroup
+            change={(e) => {
+              handleChange(e);
+            }}
+            label="Last Name"
+            name="last_name"
+            value={formData.last_name}
+          />
+          <InputGroup
+            change={(e) => {
+              handleChange(e);
+            }}
+            label="Username"
+            name="username"
+            value={formData.username}
+          />
+          <InputGroup
+            change={(e) => {
+              handleChange(e);
+            }}
+            label="Date of Birth"
+            name="date_of_birth"
+            value={formData.date_of_birth}
+          />
+          <button className="outline-none rounded-lg px-4 py-3 bg-blue-800 text-white self-end col-start-3 col-end-4 row-start-1 row-end-2 hover:bg-blue-600 cursor-pointer">
+            SUBMIT
+          </button>
+        </form>
+        <div className="users basis-3/5 w-full h-full mt-6 relative overflow-scroll">
+          <div className="users absolute w-full bg-gray-200 rounded-lg px-4 py-2">
+            Users
+          </div>
+          <div className="users-container h-full pt-8">
+            {users
+              .map((user) => (
+                <UserContainer
+                  key={user._id}
+                  name_prefix={user.name_prefix}
+                  username={user.username}
+                  full_name={`${user.first_name} ${user.last_name}`}
+                  date_of_birth={user.date_of_birth}
+                />
+              ))
+              .sort(order)}
+          </div>
+        </div>
+      </div>
+    </UserContext.Provider>
   );
 }
 
