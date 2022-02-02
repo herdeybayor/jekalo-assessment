@@ -5,9 +5,20 @@ import Axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { UserContext } from "./contexts/UserContext";
+import { css } from "@emotion/react";
+import BarLoader from "react-spinners/BarLoader";
+
+// Can be a string as well. Need to ensure each key-value pair ends with ;
+const override = css`
+  display: block;
+  margin: 20px auto;
+  border-color: blue;
+`;
 
 function App() {
   const [users, setUsers] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -15,17 +26,20 @@ function App() {
     date_of_birth: "",
   });
   useEffect(() => {
+    setIsLoading(true);
     Axios({
       method: "GET",
       url: "https://fathomless-bastion-81493.herokuapp.com/api/users",
     })
       .then((res) => {
         setUsers(res.data);
+        setIsLoading(false);
       })
       .catch((err) => {
         console.log(err);
+        setIsLoading(false);
       });
-  }, []);
+  }, [setIsLoading]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevValue) => {
@@ -62,16 +76,25 @@ function App() {
   };
   const handleSubmit = (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     Axios({
       method: "POST",
       data: formData,
       url: "https://fathomless-bastion-81493.herokuapp.com/api/user",
     })
       .then((res) => {
-        if (res.data.message === "Username is already taken") {
-          toast.error("Username is already taken!");
+        if (res.data.message) {
+          toast.error(res.data.message);
+          setIsSubmitting(false);
         } else {
+          setIsSubmitting(false);
           toast.success("Successfully added a new user!");
+          setFormData({
+            first_name: "",
+            last_name: "",
+            username: "",
+            date_of_birth: "",
+          });
           Axios({
             method: "GET",
             url: "https://fathomless-bastion-81493.herokuapp.com/api/users",
@@ -85,6 +108,7 @@ function App() {
         }
       })
       .catch((err) => {
+        setIsSubmitting(false);
         toast.error("An error has occurred");
         console.log(err);
       });
@@ -136,8 +160,11 @@ function App() {
             name="date_of_birth"
             value={formData.date_of_birth}
           />
-          <button className="outline-none rounded-lg px-4 py-3 bg-blue-800 text-white self-end col-start-3 col-end-4 row-start-1 row-end-2 hover:bg-blue-600 cursor-pointer">
-            SUBMIT
+          <button
+            className="outline-none rounded-lg px-4 py-3 bg-blue-800 text-white self-end col-start-3 col-end-4 row-start-1 row-end-2 hover:bg-blue-600 cursor-pointer disabled:bg-slate-50 disabled:text-slate-500 disabled:border-slate-200 disabled:shadow-none invalid:border-pink-500 invalid:text-pink-600 focus:invalid:border-pink-500 focus:invalid:ring-pink-500"
+            disabled={isSubmitting ? true : false}
+          >
+            {isSubmitting ? "Submitting..." : "SUBMIT"}
           </button>
         </form>
         <div className="users basis-3/5 w-full h-full mt-6 relative overflow-scroll">
@@ -145,6 +172,7 @@ function App() {
             Users
           </div>
           <div className="users-container h-full pt-8">
+            <BarLoader loading={isLoading} css={override} size={150} />
             {users
               .map((user) => (
                 <UserContainer
